@@ -236,6 +236,9 @@
         const contactForm = document.getElementById('contact-form');
         const submitButton = document.getElementById('submit-button');
         const formResponse = document.getElementById('form-response');
+        
+        // IMPORTANT: Replace this with your actual Google Apps Script Web App URL
+        const API_ENDPOINT = 'YOUR_API_ENDPOINT_HERE';
 
         contactForm.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -243,40 +246,49 @@
             const formData = new FormData(contactForm);
             const data = Object.fromEntries(formData.entries());
 
+            // Disable button and show loading text
             submitButton.disabled = true;
             submitButton.textContent = 'Sending...';
+            formResponse.classList.add('hidden');
 
-            // --- API CALL GOES HERE ---
-            // Replace the setTimeout with your actual fetch call to your API endpoint.
-            // For example:
-            // fetch('YOUR_API_ENDPOINT_HERE', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(data)
-            // })
-            // .then(response => response.json())
-            // .then(result => { ... })
-            // .catch(error => { ... });
-
-            // This is a placeholder to simulate an API call
-            setTimeout(() => {
-                // Simulate a success response
-                const success = true; // Change to false to test error case
-
-                if (success) {
+            // Make the API call using fetch
+            fetch(API_ENDPOINT, {
+                method: 'POST',
+                // Google Apps Script requires a special redirect mode and text content type
+                // to handle the POST request correctly across different browsers.
+                redirect: 'follow',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(data) // Send the form data as a JSON string
+            })
+            .then(response => response.json()) // Parse the JSON response from the API
+            .then(result => {
+                // Check the 'status' field in the JSON response from our script
+                if (result.status === 'success') {
                     formResponse.textContent = 'Thank you! Your message has been sent.';
                     formResponse.className = 'mb-4 p-4 rounded-md bg-green-500/20 text-green-300';
-                    contactForm.reset();
+                    contactForm.reset(); // Clear the form fields
                 } else {
-                    formResponse.textContent = 'An error occurred. Please try again later.';
+                    // If the API returns an error, display it
+                    formResponse.textContent = `An error occurred: ${result.details || result.message}`;
                     formResponse.className = 'mb-4 p-4 rounded-md bg-red-500/20 text-red-300';
+                    // Log the detailed error to the console for debugging
+                    console.error('API Error:', result);
                 }
-                
+            })
+            .catch(error => {
+                // Handle network errors (e.g., API is down, CORS issues)
+                formResponse.textContent = 'A network error occurred. Please try again later.';
+                formResponse.className = 'mb-4 p-4 rounded-md bg-red-500/20 text-red-300';
+                console.error('Fetch Error:', error);
+            })
+            .finally(() => {
+                // This block runs whether the request succeeded or failed
                 formResponse.classList.remove('hidden');
                 submitButton.disabled = false;
                 submitButton.textContent = 'Send Message';
-
-            }, 2000); // 2-second delay to simulate network request
+            });
         });
 
         // Fade-in sections on scroll
